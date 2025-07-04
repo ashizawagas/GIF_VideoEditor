@@ -148,6 +148,11 @@
             gap: 10px;
         }
 
+        /* 録画中は閉じるボタンを非表示にする */
+        .fullscreen-controls.recording-mode {
+            display: none;
+        }
+
         .fullscreen-btn {
             background: rgba(0, 0, 0, 0.7);
             color: white;
@@ -581,7 +586,7 @@
     <!-- フルスクリーンオーバーレイ -->
     <div class="fullscreen-overlay" id="fullscreenOverlay">
         <div class="fullscreen-preview" id="fullscreenPreview">
-            <div class="fullscreen-controls">
+            <div class="fullscreen-controls" id="fullscreenControls">
                 <button class="fullscreen-btn" id="closeFullscreenBtn">✕ 閉じる</button>
             </div>
         </div>
@@ -639,8 +644,13 @@
                 <div class="settings-grid">
                     <div class="setting-item">
                         <label class="setting-label">上部トリミング (px)</label>
-                        <input type="number" id="cropTopPixels" class="setting-input" min="0" max="500" step="1" value="100">
+                        <input type="number" id="cropTopPixels" class="setting-input" min="0" max="500" step="1" value="200">
                         <div class="setting-description">動画の上部から削除するピクセル数</div>
+                    </div>
+                    <div class="setting-item">
+                        <label class="setting-label">右端トリミング (px)</label>
+                        <input type="number" id="cropRightPixels" class="setting-input" min="0" max="500" step="1" value="30">
+                        <div class="setting-description">動画の右端から削除するピクセル数</div>
                     </div>
                     <div class="setting-item">
                         <label class="setting-label">開始時間トリミング (秒)</label>
@@ -693,9 +703,11 @@
                 this.maximizeBtn = document.getElementById('maximizeBtn');
                 this.fullscreenOverlay = document.getElementById('fullscreenOverlay');
                 this.fullscreenPreview = document.getElementById('fullscreenPreview');
+                this.fullscreenControls = document.getElementById('fullscreenControls');
                 this.closeFullscreenBtn = document.getElementById('closeFullscreenBtn');
                 this.hiddenCanvas = document.getElementById('hiddenCanvas');
                 this.cropTopPixelsInput = document.getElementById('cropTopPixels');
+                this.cropRightPixelsInput = document.getElementById('cropRightPixels');
                 this.trimStartTimeInput = document.getElementById('trimStartTime');
                 this.countdownOverlay = document.getElementById('countdownOverlay');
                 this.countdownNumber = document.getElementById('countdownNumber');
@@ -728,11 +740,30 @@
             
             // 設定値を取得
             getCropTopPixels() {
-                return parseInt(this.cropTopPixelsInput.value) || 100;
+                return parseInt(this.cropTopPixelsInput.value) || 200;
+            }
+            
+            getCropRightPixels() {
+                return parseInt(this.cropRightPixelsInput.value) || 30;
             }
             
             getTrimStartTime() {
                 return parseFloat(this.trimStartTimeInput.value) || 0.2;
+            }
+            
+            // 日本時間での数値形式タイムスタンプを取得
+            getJapanTimeString() {
+                const now = new Date();
+                const japanTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Tokyo"}));
+                
+                const year = japanTime.getFullYear();
+                const month = String(japanTime.getMonth() + 1).padStart(2, '0');
+                const day = String(japanTime.getDate()).padStart(2, '0');
+                const hours = String(japanTime.getHours()).padStart(2, '0');
+                const minutes = String(japanTime.getMinutes()).padStart(2, '0');
+                const seconds = String(japanTime.getSeconds()).padStart(2, '0');
+                
+                return `${year}${month}${day}_${hours}${minutes}${seconds}`;
             }
             
             // カウントダウン表示
@@ -845,6 +876,9 @@
                 this.stopBtn.disabled = false;
                 this.recordingIndicator.style.display = 'block';
                 
+                // 録画中は閉じるボタンを非表示にする
+                this.fullscreenControls.classList.add('recording-mode');
+                
                 this.updateStatus('録画開始 - GIFを順番に再生中...');
                 
                 // GIFの再生を開始
@@ -855,10 +889,13 @@
                 this.fullscreenOverlay.style.display = 'flex';
                 const currentContent = this.previewWindow.innerHTML;
                 this.fullscreenPreview.innerHTML = currentContent + `
-                    <div class="fullscreen-controls">
+                    <div class="fullscreen-controls" id="fullscreenControls">
                         <button class="fullscreen-btn" id="closeFullscreenBtn">✕ 閉じる</button>
                     </div>
                 `;
+                
+                // 要素を再取得
+                this.fullscreenControls = document.getElementById('fullscreenControls');
                 
                 // イベントリスナーを再バインド
                 document.getElementById('closeFullscreenBtn').addEventListener('click', () => this.closeFullscreen());
@@ -866,6 +903,10 @@
             
             closeFullscreen() {
                 this.fullscreenOverlay.style.display = 'none';
+                // 録画モードのクラスを削除
+                if (this.fullscreenControls) {
+                    this.fullscreenControls.classList.remove('recording-mode');
+                }
             }
             
             handleFileSelect(e) {
@@ -1002,10 +1043,13 @@
                     if (this.fullscreenOverlay.style.display === 'flex') {
                         this.fullscreenPreview.innerHTML = `
                             ${imgElement}
-                            <div class="fullscreen-controls">
+                            <div class="fullscreen-controls recording-mode" id="fullscreenControls">
                                 <button class="fullscreen-btn" id="closeFullscreenBtn">✕ 閉じる</button>
                             </div>
                         `;
+                        
+                        // 要素を再取得
+                        this.fullscreenControls = document.getElementById('fullscreenControls');
                         
                         // イベントリスナーを再バインド
                         document.getElementById('closeFullscreenBtn').addEventListener('click', () => this.closeFullscreen());
@@ -1036,6 +1080,11 @@
                     this.stopBtn.disabled = true;
                     this.recordingIndicator.style.display = 'none';
                     
+                    // 録画モードのクラスを削除
+                    if (this.fullscreenControls) {
+                        this.fullscreenControls.classList.remove('recording-mode');
+                    }
+                    
                     // ストリームを停止
                     this.mediaRecorder.stream.getTracks().forEach(track => track.stop());
                     
@@ -1055,9 +1104,10 @@
                 try {
                     // 設定値を取得
                     const cropTopPixels = this.getCropTopPixels();
+                    const cropRightPixels = this.getCropRightPixels();
                     const trimStartTime = this.getTrimStartTime();
                     
-                    this.updateStatus(`動画を処理中 - 最初の${trimStartTime}秒をトリミングし、上部${cropTopPixels}pxをクロップしています...`);
+                    this.updateStatus(`動画を処理中 - 最初の${trimStartTime}秒をトリミングし、上部${cropTopPixels}px、右端${cropRightPixels}pxをクロップしています...`);
                     
                     const blob = new Blob(this.recordedChunks, { type: 'video/webm' });
                     const videoUrl = URL.createObjectURL(blob);
@@ -1091,8 +1141,9 @@
                     const originalHeight = video.videoHeight;
                     
                     // クロップ後のサイズを設定
+                    const croppedWidth = Math.max(originalWidth - cropRightPixels, 1);
                     const croppedHeight = Math.max(originalHeight - cropTopPixels, 1);
-                    canvas.width = originalWidth;
+                    canvas.width = croppedWidth;
                     canvas.height = croppedHeight;
                     
                     // MediaRecorderを使用して新しい動画を作成
@@ -1133,11 +1184,11 @@
                             return;
                         }
                         
-                        // 上部をクロップして描画
+                        // 上部と右端をクロップして描画
                         ctx.drawImage(
                             video,
-                            0, cropTopPixels, originalWidth, croppedHeight,
-                            0, 0, originalWidth, croppedHeight
+                            0, cropTopPixels, croppedWidth, croppedHeight,
+                            0, 0, croppedWidth, croppedHeight
                         );
                         
                         requestAnimationFrame(renderFrame);
@@ -1162,7 +1213,7 @@
                 
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `gif-video-trimmed-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.webm`;
+                a.download = `gif-video-trimmed-${this.getJapanTimeString()}.webm`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
