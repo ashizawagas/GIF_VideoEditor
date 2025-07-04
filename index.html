@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GIF Video Editor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 30px;
+        }
+
+        .preview-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            border: 2px dashed #dee2e6;
+            transition: all 0.3s ease;
+        }
+
+        .preview-section:hover {
+            border-color: #667eea;
+            background: #f0f2ff;
+        }
+
+        .preview-window {
+            width: 100%;
+            max-width: 500px;
+            height: 350px;
+            background: #000;
+            border-radius: 10px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+        }
+
+        .preview-window img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .preview-placeholder {
+            color: #666;
+            font-size: 1.2rem;
+            text-align: center;
+        }
+
+        .maximize-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+        .maximize-btn:hover {
+            background: rgba(0, 0, 0, 0.9);
+        }
+
+        .fullscreen-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            display: none;
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .fullscreen-preview {
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .fullscreen-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .fullscreen-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .fullscreen-btn {
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .fullscreen-btn:hover {
+            background: rgba(0, 0, 0, 0.9);
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            transform: translate(-50%, -50%);
+        }
+
+        .btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+            color: #2c3e50;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            color: #2c3e50;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .timeline-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .timeline-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .timeline-header h3 {
+            color: #333;
+            font-size: 1.5rem;
+        }
+
+        .file-input-container {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .file-input-container input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .file-input-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .timeline {
+            min-height: 120px;
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            border: 2px dashed #dee2e6;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            overflow-x: auto;
+            position: relative;
+        }
+
+        .timeline:empty::before {
+            content: 'GIFファイルをドラッグ＆ドロップするか、「GIF追加」ボタンでファイルを選択してください';
+            color: #666;
+            font-style: italic;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            white-space: nowrap;
+        }
+
+        .timeline-item {
+            flex-shrink: 0;
+            width: 100px;
+            height: 80px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            cursor: move;
+            transition: all 0.3s ease;
+            border: 2px solid #dee2e6;
+        }
+
+        .timeline-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            border-color: #667eea;
+        }
+
+        .timeline-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 6px;
+        }
+
+        .timeline-item .remove-btn {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 20px;
+            height: 20px;
+            background: #ff4757;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .timeline-item .remove-btn:hover {
+            background: #ff3838;
+            transform: scale(1.1);
+        }
+
+        .timeline-item .duration {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #dee2e6;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .drag-over {
+            border-color: #667eea !important;
+            background: rgba(102, 126, 234, 0.1) !important;
+        }
+
+        .recording-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #ff4757;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: 600;
+            display: none;
+            z-index: 1000;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        .duration-input {
+            width: 80px;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 12px;
+        }
+
+        .hidden-canvas {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+            }
+            
+            .main-content {
+                padding: 20px;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="recording-indicator" id="recordingIndicator">
+        🔴 録画中...
+    </div>
+    
+    <!-- フルスクリーンオーバーレイ -->
+    <div class="fullscreen-overlay" id="fullscreenOverlay">
+        <div class="fullscreen-preview" id="fullscreenPreview">
+            <div class="fullscreen-controls">
+                <button class="fullscreen-btn" id="closeFullscreenBtn">✕ 閉じる</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 動画処理用の隠しキャンバス -->
+    <canvas id="hiddenCanvas" class="hidden-canvas"></canvas>
+    
+    <div class="container">
+        <div class="header">
+            <h1>GIF Video Editor</h1>
+            <p>GIFを繋げて動画として出力</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="preview-section">
+                <div class="preview-window" id="previewWindow">
+                    <button class="maximize-btn" id="maximizeBtn">🔍 最大化</button>
+                    <div class="preview-placeholder">
+                        プレビューウィンドウ<br>
+                        GIFを追加して録画を開始してください
+                    </div>
+                </div>
+                
+                <div class="controls">
+                    <button class="btn btn-success" id="recordBtn">🎬 録画開始</button>
+                    <button class="btn btn-danger" id="stopBtn" disabled>⏹️ 録画停止</button>
+                    <button class="btn btn-primary" id="playBtn">▶️ プレビュー再生</button>
+                </div>
+            </div>
+            
+            <div class="timeline-section">
+                <div class="timeline-header">
+                    <h3>タイムライン</h3>
+                    <div class="file-input-container">
+                        <input type="file" id="fileInput" accept=".gif" multiple>
+                        <label for="fileInput" class="file-input-label">📁 GIF追加</label>
+                    </div>
+                </div>
+                
+                <div class="timeline" id="timeline"></div>
+                
+                <div class="controls">
+                    <button class="btn btn-primary" id="clearBtn">🗑️ 全削除</button>
+                    <label>
+                        各GIF再生時間:
+                        <input type="number" id="globalDuration" class="duration-input" min="0.5" max="10" step="0.5" value="3">
+                        秒
+                    </label>
+                </div>
+            </div>
+            
+            <div class="status" id="status">
+                GIFファイルを追加してください
+            </div>
+            
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class GifVideoEditor {
+            constructor() {
+                this.gifs = [];
+                this.currentGifIndex = 0;
+                this.isRecording = false;
+                this.mediaRecorder = null;
+                this.recordedChunks = [];
+                this.playbackTimer = null;
+                this.defaultDuration = 3000; // 3秒
+                this.recordingStartTime = 0;
+                this.cropTopPixels = 100; // 上部100pxをクロップ
+                this.trimStartTime = 0.2; // 最初の0.2秒をトリミング
+                
+                this.initializeElements();
+                this.bindEvents();
+                this.updateStatus('GIFファイルを追加してください');
+            }
+            
+            initializeElements() {
+                this.fileInput = document.getElementById('fileInput');
+                this.timeline = document.getElementById('timeline');
+                this.previewWindow = document.getElementById('previewWindow');
+                this.recordBtn = document.getElementById('recordBtn');
+                this.stopBtn = document.getElementById('stopBtn');
+                this.playBtn = document.getElementById('playBtn');
+                this.clearBtn = document.getElementById('clearBtn');
+                this.status = document.getElementById('status');
+                this.progressFill = document.getElementById('progressFill');
+                this.recordingIndicator = document.getElementById('recordingIndicator');
+                this.globalDuration = document.getElementById('globalDuration');
+                this.maximizeBtn = document.getElementById('maximizeBtn');
+                this.fullscreenOverlay = document.getElementById('fullscreenOverlay');
+                this.fullscreenPreview = document.getElementById('fullscreenPreview');
+                this.closeFullscreenBtn = document.getElementById('closeFullscreenBtn');
+                this.hiddenCanvas = document.getElementById('hiddenCanvas');
+            }
+            
+            bindEvents() {
+                this.fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+                this.recordBtn.addEventListener('click', () => this.startRecordingWithFullscreen());
+                this.stopBtn.addEventListener('click', () => this.stopRecording());
+                this.playBtn.addEventListener('click', () => this.playPreview());
+                this.clearBtn.addEventListener('click', () => this.clearTimeline());
+                this.globalDuration.addEventListener('change', () => this.updateAllDurations());
+                this.maximizeBtn.addEventListener('click', () => this.openFullscreen());
+                this.closeFullscreenBtn.addEventListener('click', () => this.closeFullscreen());
+                
+                // ドラッグ＆ドロップ
+                this.timeline.addEventListener('dragover', (e) => this.handleDragOver(e));
+                this.timeline.addEventListener('drop', (e) => this.handleDrop(e));
+                this.timeline.addEventListener('dragleave', (e) => this.handleDragLeave(e));
+                
+                // キーボードイベント
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        this.closeFullscreen();
+                    }
+                });
+            }
+            
+            // 録画開始時に自動的にフルスクリーン表示
+            async startRecordingWithFullscreen() {
+                if (this.gifs.length === 0) {
+                    alert('GIFファイルを追加してください');
+                    return;
+                }
+                
+                // プレビューを最大化
+                this.openFullscreen();
+                
+                // 0.2秒待ってから録画開始
+                setTimeout(() => {
+                    this.startRecording();
+                }, 200);
+            }
+            
+            openFullscreen() {
+                this.fullscreenOverlay.style.display = 'flex';
+                const currentContent = this.previewWindow.innerHTML;
+                this.fullscreenPreview.innerHTML = currentContent + `
+                    <div class="fullscreen-controls">
+                        <button class="fullscreen-btn" id="closeFullscreenBtn">✕ 閉じる</button>
+                    </div>
+                `;
+                
+                // イベントリスナーを再バインド
+                document.getElementById('closeFullscreenBtn').addEventListener('click', () => this.closeFullscreen());
+            }
+            
+            closeFullscreen() {
+                this.fullscreenOverlay.style.display = 'none';
+            }
+            
+            handleFileSelect(e) {
+                const files = Array.from(e.target.files);
+                files.forEach(file => {
+                    if (file.type === 'image/gif') {
+                        this.addGifToTimeline(file);
+                    }
+                });
+                e.target.value = '';
+            }
+            
+            handleDragOver(e) {
+                e.preventDefault();
+                this.timeline.classList.add('drag-over');
+            }
+            
+            handleDragLeave(e) {
+                this.timeline.classList.remove('drag-over');
+            }
+            
+            handleDrop(e) {
+                e.preventDefault();
+                this.timeline.classList.remove('drag-over');
+                const files = Array.from(e.dataTransfer.files);
+                files.forEach(file => {
+                    if (file.type === 'image/gif') {
+                        this.addGifToTimeline(file);
+                    }
+                });
+            }
+            
+            addGifToTimeline(file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const gifData = {
+                        id: Date.now() + Math.random(),
+                        url: e.target.result,
+                        name: file.name,
+                        duration: this.defaultDuration
+                    };
+                    
+                    this.gifs.push(gifData);
+                    this.renderTimeline();
+                    this.updateStatus(`${this.gifs.length}個のGIFが追加されました`);
+                };
+                reader.readAsDataURL(file);
+            }
+            
+            renderTimeline() {
+                this.timeline.innerHTML = '';
+                
+                this.gifs.forEach((gif, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'timeline-item';
+                    item.draggable = true;
+                    
+                    item.innerHTML = `
+                        <img src="${gif.url}" alt="${gif.name}">
+                        <button class="remove-btn" onclick="editor.removeGif(${index})">×</button>
+                        <div class="duration">${gif.duration/1000}s</div>
+                    `;
+                    
+                    // ドラッグイベント
+                    item.addEventListener('dragstart', (e) => {
+                        e.dataTransfer.setData('text/plain', index);
+                    });
+                    
+                    item.addEventListener('dragover', (e) => {
+                        e.preventDefault();
+                    });
+                    
+                    item.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                        const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+                        const toIndex = index;
+                        this.moveGif(fromIndex, toIndex);
+                    });
+                    
+                    this.timeline.appendChild(item);
+                });
+            }
+            
+            moveGif(fromIndex, toIndex) {
+                const gif = this.gifs.splice(fromIndex, 1)[0];
+                this.gifs.splice(toIndex, 0, gif);
+                this.renderTimeline();
+            }
+            
+            removeGif(index) {
+                this.gifs.splice(index, 1);
+                this.renderTimeline();
+                this.updateStatus(`GIFが削除されました。残り${this.gifs.length}個`);
+            }
+            
+            clearTimeline() {
+                this.gifs = [];
+                this.renderTimeline();
+                this.updateStatus('タイムラインがクリアされました');
+                this.previewWindow.innerHTML = `
+                    <button class="maximize-btn" id="maximizeBtn">🔍 最大化</button>
+                    <div class="preview-placeholder">プレビューウィンドウ<br>GIFを追加して録画を開始してください</div>
+                `;
+                document.getElementById('maximizeBtn').addEventListener('click', () => this.openFullscreen());
+            }
+            
+            updateAllDurations() {
+                const newDuration = parseFloat(this.globalDuration.value) * 1000;
+                this.defaultDuration = newDuration;
+                this.gifs.forEach(gif => {
+                    gif.duration = newDuration;
+                });
+                this.renderTimeline();
+            }
+            
+            async startRecording() {
+                try {
+                    let mediaOptions = {
+                        video: {
+                            mediaSource: 'screen',
+                            displaySurface: 'window',
+                            logicalSurface: true,
+                            cursor: 'never',
+                            width: { ideal: 1920 },
+                            height: { ideal: 1080 }
+                        },
+                        audio: false
+                    };
+                    
+                    // 画面録画のストリームを取得
+                    const stream = await navigator.mediaDevices.getDisplayMedia(mediaOptions);
+                    
+                    // 録画開始時刻を記録
+                    this.recordingStartTime = Date.now();
+                    
+                    this.mediaRecorder = new MediaRecorder(stream, {
+                        mimeType: 'video/webm;codecs=vp9'
+                    });
+                    this.recordedChunks = [];
+                    
+                    this.mediaRecorder.ondataavailable = (e) => {
+                        if (e.data.size > 0) {
+                            this.recordedChunks.push(e.data);
+                        }
+                    };
+                    
+                    this.mediaRecorder.onstop = () => {
+                        this.processAndSaveRecording();
+                    };
+                    
+                    this.mediaRecorder.start();
+                    this.isRecording = true;
+                    this.recordBtn.disabled = true;
+                    this.stopBtn.disabled = false;
+                    this.recordingIndicator.style.display = 'block';
+                    
+                    this.updateStatus('録画開始 - GIFを順番に再生中...');
+                    
+                    // GIFの再生を開始
+                    this.playGifsForRecording();
+                    
+                } catch (error) {
+                    console.error('録画の開始に失敗しました:', error);
+                    alert('画面録画を開始できませんでした。ブラウザが対応していない可能性があります。');
+                    this.closeFullscreen();
+                }
+            }
+            
+            async playGifsForRecording() {
+                this.currentGifIndex = 0;
+                
+                for (let i = 0; i < this.gifs.length; i++) {
+                    if (!this.isRecording) break;
+                    
+                    const gif = this.gifs[i];
+                    this.currentGifIndex = i;
+                    
+                    // プレビューウィンドウとフルスクリーンの両方にGIFを表示
+                    const imgElement = `<img src="${gif.url}" alt="${gif.name}">`;
+                    
+                    this.previewWindow.innerHTML = `
+                        <button class="maximize-btn" id="maximizeBtn">🔍 最大化</button>
+                        ${imgElement}
+                    `;
+                    
+                    // フルスクリーンが開いている場合はそちらも更新
+                    if (this.fullscreenOverlay.style.display === 'flex') {
+                        this.fullscreenPreview.innerHTML = `
+                            ${imgElement}
+                            <div class="fullscreen-controls">
+                                <button class="fullscreen-btn" id="closeFullscreenBtn">✕ 閉じる</button>
+                            </div>
+                        `;
+                        
+                        // イベントリスナーを再バインド
+                        document.getElementById('closeFullscreenBtn').addEventListener('click', () => this.closeFullscreen());
+                    }
+                    
+                    document.getElementById('maximizeBtn').addEventListener('click', () => this.openFullscreen());
+                    
+                    // プログレスバーを更新
+                    const progress = ((i + 1) / this.gifs.length) * 100;
+                    this.progressFill.style.width = progress + '%';
+                    
+                    this.updateStatus(`再生中: ${gif.name} (${i + 1}/${this.gifs.length})`);
+                    
+                    // 指定時間待機
+                    await new Promise(resolve => setTimeout(resolve, gif.duration));
+                }
+                
+                if (this.isRecording) {
+                    this.stopRecording();
+                }
+            }
+            
+            stopRecording() {
+                if (this.mediaRecorder && this.isRecording) {
+                    this.mediaRecorder.stop();
+                    this.isRecording = false;
+                    this.recordBtn.disabled = false;
+                    this.stopBtn.disabled = true;
+                    this.recordingIndicator.style.display = 'none';
+                    
+                    // ストリームを停止
+                    this.mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                    
+                    this.updateStatus('録画停止 - 動画を処理中...');
+                    
+                    // 録画終了後にフルスクリーンを閉じる
+                    this.closeFullscreen();
+                }
+            }
+            
+            async processAndSaveRecording() {
+                if (this.recordedChunks.length === 0) {
+                    this.updateStatus('録画データがありません');
+                    return;
+                }
+                
+                try {
+                    this.updateStatus('動画を処理中 - 最初の0.2秒をトリミングし、上部をクロップしています...');
+                    
+                    const blob = new Blob(this.recordedChunks, { type: 'video/webm' });
+                    const videoUrl = URL.createObjectURL(blob);
+                    
+                    // 動画要素を作成
+                    const video = document.createElement('video');
+                    video.src = videoUrl;
+                    video.muted = true;
+                    
+                    await new Promise((resolve, reject) => {
+                        video.onloadedmetadata = resolve;
+                        video.onerror = reject;
+                    });
+                    
+                    // 動画の総時間を取得
+                    const videoDuration = video.duration;
+                    
+                    // トリミング後の時間を計算
+                    const trimmedDuration = videoDuration - this.trimStartTime;
+                    
+                    if (trimmedDuration <= 0) {
+                        throw new Error('動画が短すぎてトリミングできません');
+                    }
+                    
+                    // キャンバスを設定
+                    const canvas = this.hiddenCanvas;
+                    const ctx = canvas.getContext('2d');
+                    
+                    // 元の動画サイズを取得
+                    const originalWidth = video.videoWidth;
+                    const originalHeight = video.videoHeight;
+                    
+                    // クロップ後のサイズを設定
+                    const croppedHeight = originalHeight - this.cropTopPixels;
+                    canvas.width = originalWidth;
+                    canvas.height = croppedHeight;
+                    
+                    // MediaRecorderを使用して新しい動画を作成
+                    const canvasStream = canvas.captureStream(30);
+                    const processedRecorder = new MediaRecorder(canvasStream, {
+                        mimeType: 'video/webm;codecs=vp9'
+                    });
+                    
+                    const processedChunks = [];
+                    
+                    processedRecorder.ondataavailable = (e) => {
+                        if (e.data.size > 0) {
+                            processedChunks.push(e.data);
+                        }
+                    };
+                    
+                    processedRecorder.onstop = () => {
+                        const processedBlob = new Blob(processedChunks, { type: 'video/webm' });
+                        this.downloadVideo(processedBlob);
+                        URL.revokeObjectURL(videoUrl);
+                    };
+                    
+                    processedRecorder.start();
+                    
+                    // トリミング開始時間を設定
+                    video.currentTime = this.trimStartTime;
+                    
+                    let startTime = null;
+                    
+                    const renderFrame = (timestamp) => {
+                        if (!startTime) startTime = timestamp;
+                        
+                        const elapsed = (timestamp - startTime) / 1000;
+                        
+                        // トリミング後の時間を超えた場合は停止
+                        if (elapsed >= trimmedDuration || video.ended) {
+                            processedRecorder.stop();
+                            return;
+                        }
+                        
+                        // 上部をクロップして描画
+                        ctx.drawImage(
+                            video,
+                            0, this.cropTopPixels, originalWidth, croppedHeight,
+                            0, 0, originalWidth, croppedHeight
+                        );
+                        
+                        requestAnimationFrame(renderFrame);
+                    };
+                    
+                    // 動画の再生を開始
+                    video.addEventListener('seeked', () => {
+                        video.play();
+                        requestAnimationFrame(renderFrame);
+                    });
+                    
+                } catch (error) {
+                    console.error('動画処理エラー:', error);
+                    // エラーの場合は元の動画をそのまま保存
+                    const blob = new Blob(this.recordedChunks, { type: 'video/webm' });
+                    this.downloadVideo(blob);
+                }
+            }
+            
+            downloadVideo(blob) {
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `gif-video-trimmed-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.webm`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                
+                URL.revokeObjectURL(url);
+                this.recordedChunks = [];
+                
+                this.updateStatus('トリミング済み動画が保存されました！');
+                this.progressFill.style.width = '0%';
+            }
+            
+            playPreview() {
+                if (this.gifs.length === 0) {
+                    alert('GIFファイルを追加してください');
+                    return;
+                }
+                
+                this.playGifsPreview();
+            }
+            
+            async playGifsPreview() {
+                this.playBtn.disabled = true;
+                this.updateStatus('プレビュー再生中...');
+                
+                for (let i = 0; i < this.gifs.length; i++) {
+                    const gif = this.gifs[i];
+                    
+                    this.previewWindow.innerHTML = `
+                        <button class="maximize-btn" id="maximizeBtn">🔍 最大化</button>
+                        <img src="${gif.url}" alt="${gif.name}">
+                    `;
+                    document.getElementById('maximizeBtn').addEventListener('click', () => this.openFullscreen());
+                    
+                    const progress = ((i + 1) / this.gifs.length) * 100;
+                    this.progressFill.style.width = progress + '%';
+                    
+                    this.updateStatus(`プレビュー: ${gif.name} (${i + 1}/${this.gifs.length})`);
+                    
+                    await new Promise(resolve => setTimeout(resolve, gif.duration));
+                }
+                
+                this.playBtn.disabled = false;
+                this.updateStatus('プレビュー再生完了');
+                this.progressFill.style.width = '0%';
+            }
+            
+            updateStatus(message) {
+                this.status.textContent = message;
+            }
+        }
+        
+        // アプリケーションの初期化
+        const editor = new GifVideoEditor();
+    </script>
+</body>
+</html>
