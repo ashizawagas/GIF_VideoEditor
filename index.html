@@ -352,6 +352,55 @@
             font-size: 10px;
         }
 
+        .settings-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .settings-header {
+            color: #333;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .setting-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .setting-label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .setting-input {
+            padding: 10px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .setting-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .setting-description {
+            font-size: 12px;
+            color: #666;
+            font-style: italic;
+        }
+
         .status {
             margin-top: 20px;
             padding: 15px;
@@ -416,6 +465,65 @@
             display: none;
         }
 
+        /* カウントダウンオーバーレイのスタイル */
+        .countdown-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        .countdown-content {
+            text-align: center;
+            color: white;
+        }
+
+        .countdown-number {
+            font-size: 8rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            animation: countdownPulse 1s ease-in-out;
+        }
+
+        .countdown-message {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+        }
+
+        .countdown-instruction {
+            font-size: 1.2rem;
+            color: #ffd700;
+            margin-bottom: 20px;
+        }
+
+        .countdown-progress {
+            width: 300px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .countdown-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 1s linear;
+        }
+
+        @keyframes countdownPulse {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
         @media (max-width: 768px) {
             .container {
                 margin: 10px;
@@ -434,12 +542,40 @@
                 width: 100%;
                 max-width: 300px;
             }
+
+            .settings-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .countdown-number {
+                font-size: 5rem;
+            }
+
+            .countdown-message {
+                font-size: 1.2rem;
+            }
+
+            .countdown-instruction {
+                font-size: 1rem;
+            }
         }
     </style>
 </head>
 <body>
     <div class="recording-indicator" id="recordingIndicator">
         🔴 録画中...
+    </div>
+    
+    <!-- カウントダウンオーバーレイ -->
+    <div class="countdown-overlay" id="countdownOverlay">
+        <div class="countdown-content">
+            <div class="countdown-number" id="countdownNumber">3</div>
+            <div class="countdown-message">録画開始まで</div>
+            <div class="countdown-instruction">⚠️ マウスポインタを画面外に移動させてください</div>
+            <div class="countdown-progress">
+                <div class="countdown-progress-fill" id="countdownProgressFill"></div>
+            </div>
+        </div>
     </div>
     
     <!-- フルスクリーンオーバーレイ -->
@@ -497,6 +633,22 @@
                     </label>
                 </div>
             </div>
+
+            <div class="settings-section">
+                <h3 class="settings-header">録画設定</h3>
+                <div class="settings-grid">
+                    <div class="setting-item">
+                        <label class="setting-label">上部トリミング (px)</label>
+                        <input type="number" id="cropTopPixels" class="setting-input" min="0" max="500" step="1" value="100">
+                        <div class="setting-description">動画の上部から削除するピクセル数</div>
+                    </div>
+                    <div class="setting-item">
+                        <label class="setting-label">開始時間トリミング (秒)</label>
+                        <input type="number" id="trimStartTime" class="setting-input" min="0" max="5" step="0.1" value="0.2">
+                        <div class="setting-description">動画の最初から削除する時間</div>
+                    </div>
+                </div>
+            </div>
             
             <div class="status" id="status">
                 GIFファイルを追加してください
@@ -519,8 +671,7 @@
                 this.playbackTimer = null;
                 this.defaultDuration = 3000; // 3秒
                 this.recordingStartTime = 0;
-                this.cropTopPixels = 100; // 上部100pxをクロップ
-                this.trimStartTime = 0.2; // 最初の0.2秒をトリミング
+                this.countdownTimer = null;
                 
                 this.initializeElements();
                 this.bindEvents();
@@ -544,11 +695,16 @@
                 this.fullscreenPreview = document.getElementById('fullscreenPreview');
                 this.closeFullscreenBtn = document.getElementById('closeFullscreenBtn');
                 this.hiddenCanvas = document.getElementById('hiddenCanvas');
+                this.cropTopPixelsInput = document.getElementById('cropTopPixels');
+                this.trimStartTimeInput = document.getElementById('trimStartTime');
+                this.countdownOverlay = document.getElementById('countdownOverlay');
+                this.countdownNumber = document.getElementById('countdownNumber');
+                this.countdownProgressFill = document.getElementById('countdownProgressFill');
             }
             
             bindEvents() {
                 this.fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
-                this.recordBtn.addEventListener('click', () => this.startRecordingWithFullscreen());
+                this.recordBtn.addEventListener('click', () => this.startRecordingWithCountdown());
                 this.stopBtn.addEventListener('click', () => this.stopRecording());
                 this.playBtn.addEventListener('click', () => this.playPreview());
                 this.clearBtn.addEventListener('click', () => this.clearTimeline());
@@ -565,24 +721,134 @@
                 document.addEventListener('keydown', (e) => {
                     if (e.key === 'Escape') {
                         this.closeFullscreen();
+                        this.hideCountdown();
                     }
                 });
             }
             
-            // 録画開始時に自動的にフルスクリーン表示
-            async startRecordingWithFullscreen() {
+            // 設定値を取得
+            getCropTopPixels() {
+                return parseInt(this.cropTopPixelsInput.value) || 100;
+            }
+            
+            getTrimStartTime() {
+                return parseFloat(this.trimStartTimeInput.value) || 0.2;
+            }
+            
+            // カウントダウン表示
+            showCountdown() {
+                this.countdownOverlay.style.display = 'flex';
+            }
+            
+            // カウントダウン非表示
+            hideCountdown() {
+                this.countdownOverlay.style.display = 'none';
+                if (this.countdownTimer) {
+                    clearInterval(this.countdownTimer);
+                    this.countdownTimer = null;
+                }
+            }
+            
+            // カウントダウン開始
+            async startCountdown() {
+                return new Promise((resolve) => {
+                    let count = 3;
+                    this.countdownNumber.textContent = count;
+                    this.countdownProgressFill.style.width = '0%';
+                    
+                    this.countdownTimer = setInterval(() => {
+                        count--;
+                        
+                        if (count > 0) {
+                            this.countdownNumber.textContent = count;
+                            this.countdownProgressFill.style.width = ((3 - count) / 3 * 100) + '%';
+                        } else {
+                            this.countdownNumber.textContent = 'START!';
+                            this.countdownProgressFill.style.width = '100%';
+                            
+                            setTimeout(() => {
+                                this.hideCountdown();
+                                resolve();
+                            }, 500);
+                        }
+                    }, 1000);
+                });
+            }
+            
+            // 録画開始（カウントダウン付き）
+            async startRecordingWithCountdown() {
                 if (this.gifs.length === 0) {
                     alert('GIFファイルを追加してください');
                     return;
                 }
                 
-                // プレビューを最大化
-                this.openFullscreen();
+                try {
+                    // 画面録画の許可を取得
+                    let mediaOptions = {
+                        video: {
+                            mediaSource: 'screen',
+                            displaySurface: 'window',
+                            logicalSurface: true,
+                            cursor: 'never',
+                            width: { ideal: 1920 },
+                            height: { ideal: 1080 }
+                        },
+                        audio: false
+                    };
+                    
+                    const stream = await navigator.mediaDevices.getDisplayMedia(mediaOptions);
+                    
+                    // プレビューを最大化
+                    this.openFullscreen();
+                    
+                    // カウントダウン表示
+                    this.showCountdown();
+                    this.updateStatus('録画準備中 - カウントダウン開始');
+                    
+                    // カウントダウン開始
+                    await this.startCountdown();
+                    
+                    // 録画開始
+                    this.startRecordingWithStream(stream);
+                    
+                } catch (error) {
+                    console.error('録画の開始に失敗しました:', error);
+                    alert('画面録画を開始できませんでした。ブラウザが対応していない可能性があります。');
+                    this.closeFullscreen();
+                    this.hideCountdown();
+                }
+            }
+            
+            // ストリームを使用して録画開始
+            startRecordingWithStream(stream) {
+                // 録画開始時刻を記録
+                this.recordingStartTime = Date.now();
                 
-                // 0.2秒待ってから録画開始
-                setTimeout(() => {
-                    this.startRecording();
-                }, 200);
+                this.mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: 'video/webm;codecs=vp9'
+                });
+                this.recordedChunks = [];
+                
+                this.mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) {
+                        this.recordedChunks.push(e.data);
+                    }
+                };
+                
+                this.mediaRecorder.onstop = () => {
+                    this.processAndSaveRecording();
+                };
+                
+                this.mediaRecorder.start();
+                this.isRecording = true;
+                this.recordBtn.disabled = true;
+                this.stopBtn.disabled = false;
+                this.recordingIndicator.style.display = 'block';
+                
+                this.updateStatus('録画開始 - GIFを順番に再生中...');
+                
+                // GIFの再生を開始
+                this.playGifsForRecording();
             }
             
             openFullscreen() {
@@ -715,59 +981,6 @@
                 this.renderTimeline();
             }
             
-            async startRecording() {
-                try {
-                    let mediaOptions = {
-                        video: {
-                            mediaSource: 'screen',
-                            displaySurface: 'window',
-                            logicalSurface: true,
-                            cursor: 'never',
-                            width: { ideal: 1920 },
-                            height: { ideal: 1080 }
-                        },
-                        audio: false
-                    };
-                    
-                    // 画面録画のストリームを取得
-                    const stream = await navigator.mediaDevices.getDisplayMedia(mediaOptions);
-                    
-                    // 録画開始時刻を記録
-                    this.recordingStartTime = Date.now();
-                    
-                    this.mediaRecorder = new MediaRecorder(stream, {
-                        mimeType: 'video/webm;codecs=vp9'
-                    });
-                    this.recordedChunks = [];
-                    
-                    this.mediaRecorder.ondataavailable = (e) => {
-                        if (e.data.size > 0) {
-                            this.recordedChunks.push(e.data);
-                        }
-                    };
-                    
-                    this.mediaRecorder.onstop = () => {
-                        this.processAndSaveRecording();
-                    };
-                    
-                    this.mediaRecorder.start();
-                    this.isRecording = true;
-                    this.recordBtn.disabled = true;
-                    this.stopBtn.disabled = false;
-                    this.recordingIndicator.style.display = 'block';
-                    
-                    this.updateStatus('録画開始 - GIFを順番に再生中...');
-                    
-                    // GIFの再生を開始
-                    this.playGifsForRecording();
-                    
-                } catch (error) {
-                    console.error('録画の開始に失敗しました:', error);
-                    alert('画面録画を開始できませんでした。ブラウザが対応していない可能性があります。');
-                    this.closeFullscreen();
-                }
-            }
-            
             async playGifsForRecording() {
                 this.currentGifIndex = 0;
                 
@@ -840,7 +1053,11 @@
                 }
                 
                 try {
-                    this.updateStatus('動画を処理中 - 最初の0.2秒をトリミングし、上部をクロップしています...');
+                    // 設定値を取得
+                    const cropTopPixels = this.getCropTopPixels();
+                    const trimStartTime = this.getTrimStartTime();
+                    
+                    this.updateStatus(`動画を処理中 - 最初の${trimStartTime}秒をトリミングし、上部${cropTopPixels}pxをクロップしています...`);
                     
                     const blob = new Blob(this.recordedChunks, { type: 'video/webm' });
                     const videoUrl = URL.createObjectURL(blob);
@@ -859,7 +1076,7 @@
                     const videoDuration = video.duration;
                     
                     // トリミング後の時間を計算
-                    const trimmedDuration = videoDuration - this.trimStartTime;
+                    const trimmedDuration = videoDuration - trimStartTime;
                     
                     if (trimmedDuration <= 0) {
                         throw new Error('動画が短すぎてトリミングできません');
@@ -874,7 +1091,7 @@
                     const originalHeight = video.videoHeight;
                     
                     // クロップ後のサイズを設定
-                    const croppedHeight = originalHeight - this.cropTopPixels;
+                    const croppedHeight = Math.max(originalHeight - cropTopPixels, 1);
                     canvas.width = originalWidth;
                     canvas.height = croppedHeight;
                     
@@ -901,7 +1118,7 @@
                     processedRecorder.start();
                     
                     // トリミング開始時間を設定
-                    video.currentTime = this.trimStartTime;
+                    video.currentTime = trimStartTime;
                     
                     let startTime = null;
                     
@@ -919,7 +1136,7 @@
                         // 上部をクロップして描画
                         ctx.drawImage(
                             video,
-                            0, this.cropTopPixels, originalWidth, croppedHeight,
+                            0, cropTopPixels, originalWidth, croppedHeight,
                             0, 0, originalWidth, croppedHeight
                         );
                         
